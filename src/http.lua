@@ -2,6 +2,7 @@
 -- HTTP/1.1 client support for the Lua language.
 -- LuaSocket toolkit.
 -- Author: Diego Nehab
+-- RCS ID: $Id: http.lua,v 1.71 2007/10/13 23:55:20 diego Exp $
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -12,7 +13,6 @@ local url = require("socket.url")
 local ltn12 = require("ltn12")
 local mime = require("mime")
 local string = require("string")
-local headers = require("socket.headers")
 local base = _G
 local table = require("table")
 module("socket.http")
@@ -123,11 +123,10 @@ function metat.__index:sendrequestline(method, uri)
     return self.try(self.c:send(reqline))
 end
 
-function metat.__index:sendheaders(tosend)
-    local canonic = headers.canonic
+function metat.__index:sendheaders(headers)
     local h = "\r\n"
-    for f, v in base.pairs(tosend) do
-        h = (canonic[f] or f) .. ": " .. v .. "\r\n" .. h
+    for i, v in base.pairs(headers) do
+        h = i .. ": " .. v .. "\r\n" .. h
     end
     self.try(self.c:send(h))
     return 1
@@ -255,7 +254,7 @@ local function shouldredirect(reqt, code, headers)
     return headers.location and
            string.gsub(headers.location, "%s", "") ~= "" and
            (reqt.redirect ~= false) and
-           (code == 301 or code == 302 or code == 303 or code == 307) and
+           (code == 301 or code == 302) and
            (not reqt.method or reqt.method == "GET" or reqt.method == "HEAD")
            and (not reqt.nredirects or reqt.nredirects < 5)
 end

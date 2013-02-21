@@ -3,29 +3,25 @@ local socket = require"socket"
 host = host or "localhost"
 port = port or "8383"
 
-function printf(...)
-    io.stderr:write(string.format(...))
-end
-
 function pass(...)
-    printf(...) 
-    io.stderr:write("\n")
+    local s = string.format(unpack(arg))
+    io.stderr:write(s, "\n")
 end
 
 function fail(...)
-    io.stderr:write("ERROR: ")
-    printf(...)
-    io.stderr:write("!\n")
+    local s = string.format(unpack(arg))
+    io.stderr:write("ERROR: ", s, "!\n")
+socket.sleep(3)
     os.exit()
 end
 
 function warn(...)
-    local s = string.format(...)
+    local s = string.format(unpack(arg))
     io.stderr:write("WARNING: ", s, "\n")
 end
 
 function remote(...)
-    local s = string.format(...)
+    local s = string.format(unpack(arg))
     s = string.gsub(s, "\n", ";")
     s = string.gsub(s, "%s+", " ")
     s = string.gsub(s, "^%s*", "")
@@ -84,6 +80,7 @@ io.stderr:write("----------------------------------------------\n",
 start = socket.gettime()
 
 function reconnect()
+    io.stderr:write("attempting data connection... ")
     if data then data:close() end
     remote [[
         if data then data:close() data = nil end
@@ -91,11 +88,12 @@ function reconnect()
         data:setoption("tcp-nodelay", true)
     ]]
     data, err = socket.connect(host, port)
-    if not data then fail(err) end
+    if not data then fail(err) 
+    else pass("connected!") end
     data:setoption("tcp-nodelay", true)
 end
 
-printf("attempting control connection...")
+pass("attempting control connection...")
 control, err = socket.connect(host, port)
 if err then fail(err)
 else pass("connected!") end
@@ -114,7 +112,6 @@ end
 ------------------------------------------------------------------------
 function test_mixed(len)
     reconnect()
-    io.stderr:write("length " .. len .. ": ")
     local inter = math.ceil(len/4)
     local p1 = "unix " .. string.rep("x", inter) .. "line\n"
     local p2 = "dos " .. string.rep("y", inter) .. "line\r\n"
@@ -140,12 +137,8 @@ remote "data:send(str); data:close()"
 end
 
 ------------------------------------------------------------------------
-if not math.mod then
-	math.mod = math.fmod
-end
 function test_asciiline(len)
     reconnect()
-    io.stderr:write("length " .. len .. ": ")
     local str, str10, back, err
     str = string.rep("x", math.mod(len, 10))
     str10 = string.rep("aZb.c#dAe?", math.floor(len/10))
@@ -163,7 +156,6 @@ end
 ------------------------------------------------------------------------
 function test_rawline(len)
     reconnect()
-    io.stderr:write("length " .. len .. ": ")
     local str, str10, back, err
     str = string.rep(string.char(47), math.mod(len, 10))
     str10 = string.rep(string.char(120,21,77,4,5,0,7,36,44,100), 
@@ -182,7 +174,6 @@ end
 ------------------------------------------------------------------------
 function test_raw(len)
     reconnect()
-    io.stderr:write("length " .. len .. ": ")
     local half = math.floor(len/2)
     local s1, s2, back, err
     s1 = string.rep("x", half)
@@ -203,7 +194,7 @@ end
 function test_totaltimeoutreceive(len, tm, sl)
     reconnect()
     local str, err, partial
-    printf("%d bytes, %ds total timeout, %ds pause: ", len, tm, sl)
+    pass("%d bytes, %ds total timeout, %ds pause", len, tm, sl)
     remote (string.format ([[
         data:settimeout(%d)
         str = string.rep('a', %d)
@@ -224,7 +215,7 @@ end
 function test_totaltimeoutsend(len, tm, sl)
     reconnect()
     local str, err, total
-    printf("%d bytes, %ds total timeout, %ds pause: ", len, tm, sl)
+    pass("%d bytes, %ds total timeout, %ds pause", len, tm, sl)
     remote (string.format ([[
         data:settimeout(%d)
         str = data:receive(%d)
@@ -244,7 +235,7 @@ end
 function test_blockingtimeoutreceive(len, tm, sl)
     reconnect()
     local str, err, partial
-    printf("%d bytes, %ds blocking timeout, %ds pause: ", len, tm, sl)
+    pass("%d bytes, %ds blocking timeout, %ds pause", len, tm, sl)
     remote (string.format ([[
         data:settimeout(%d)
         str = string.rep('a', %d)
@@ -264,7 +255,7 @@ end
 function test_blockingtimeoutsend(len, tm, sl)
     reconnect()
     local str, err, total
-    printf("%d bytes, %ds blocking timeout, %ds pause: ", len, tm, sl)
+    pass("%d bytes, %ds blocking timeout, %ds pause", len, tm, sl)
     remote (string.format ([[
         data:settimeout(%d)
         str = data:receive(%d)
@@ -282,7 +273,6 @@ end
 
 ------------------------------------------------------------------------
 function empty_connect()
-    printf("empty connect: ")
     reconnect()
     if data then data:close() data = nil end
     remote [[
@@ -294,7 +284,7 @@ function empty_connect()
         pass("ok")
         data = socket.connect(host, port)
     else 
-        pass("gethostbyname returns localhost on empty string...")
+		pass("gethostbyname returns localhost on empty string...")
     end
 end
 
@@ -321,7 +311,7 @@ function test_closed()
     local back, partial, err
     local str = 'little string'
     reconnect()
-    printf("trying read detection: ")
+    pass("trying read detection")
     remote (string.format ([[
         data:send('%s')
         data:close()
@@ -334,7 +324,7 @@ function test_closed()
     elseif str ~= partial then fail("didn't receive partial result.")
     else pass("graceful 'closed' received") end
     reconnect()
-    printf("trying write detection: ")
+    pass("trying write detection")
     remote [[
         data:close()
         data = nil
@@ -362,28 +352,15 @@ function test_selectbugs()
         (e == "timeout" or e == "error"))
     pass("closed sockets: ok")
     e = pcall(socket.select, "wrong", 1, 0.1)
-    assert(e == false, tostring(e))
+    assert(e == false)
     e = pcall(socket.select, {}, 1, 0.1)
-    assert(e == false, tostring(e))
+    assert(e == false)
     pass("invalid input: ok")
-    local toomany = {}
-    for i = 1, socket._SETSIZE+1 do
-        toomany[#toomany+1] = socket.udp()
-    end
-    if #toomany > socket._SETSIZE then
-        local e = pcall(socket.select, toomany, nil, 0.1)
-        assert(e == false, tostring(e))
-        pass("too many sockets (" .. #toomany .. "): ok")
-    else
-        pass("unable to create enough sockets (max was "..#toomany..")")
-        pass("try using ulimit")
-    end
-    for _, c in ipairs(toomany) do c:close() end
 end
 
 ------------------------------------------------------------------------
 function accept_timeout()
-    printf("accept with timeout (if it hangs, it failed): ")
+    io.stderr:write("accept with timeout (if it hangs, it failed): ")
     local s, e = socket.bind("*", 0, 0)
     assert(s, e)
     local t = socket.gettime()
@@ -399,22 +376,23 @@ end
 
 ------------------------------------------------------------------------
 function connect_timeout()
-    printf("connect with timeout (if it hangs, it failed!): ")
+    io.stderr:write("connect with timeout (if it hangs, it failed!): ")
     local t = socket.gettime()
     local c, e = socket.tcp()
     assert(c, e)
     c:settimeout(0.1)
     local t = socket.gettime()
     local r, e = c:connect("10.0.0.1", 81)
+print(r, e)
     assert(not r, "should not connect")
     assert(socket.gettime() - t < 2, "took too long to give up.") 
     c:close()
-    pass("ok") 
+    print("ok") 
 end
 
 ------------------------------------------------------------------------
 function accept_errors()
-    printf("not listening: ")
+    io.stderr:write("not listening: ")
     local d, e = socket.bind("*", 0)
     assert(d, e);
     local c, e = socket.tcp();
@@ -423,35 +401,31 @@ function accept_errors()
     d:settimeout(2)
     local r, e = d:accept()
     assert(not r and e)
-    pass("ok")
-    printf("not supported: ")
+    print("ok: ", e)
+    io.stderr:write("not supported: ")
     local c, e = socket.udp()
     assert(c, e);
     d:setfd(c:getfd())
     local r, e = d:accept()
     assert(not r and e)
-    pass("ok")
+    print("ok: ", e)
 end
 
 ------------------------------------------------------------------------
 function connect_errors()
-    printf("connection refused: ")
+    io.stderr:write("connection refused: ")
     local c, e = socket.connect("localhost", 1);
     assert(not c and e)
-    pass("ok")
-    printf("host not found: ")
+    print("ok: ", e)
+    io.stderr:write("host not found: ")
     local c, e = socket.connect("host.is.invalid", 1);
     assert(not c and e, e)
-    pass("ok")
+    print("ok: ", e)
 end
 
 ------------------------------------------------------------------------
 function rebind_test()
-    --local c ,c1 = socket.bind("localhost", 0)
-   local c ,c1 = socket.bind("127.0.0.1", 0)
-    if not c then pass ("failed to bind! " .. tostring(c) .. ' ' .. tostring(c1))  return end
-	assert(c,c1)
- 
+    local c = socket.bind("localhost", 0)
     local i, p = c:getsockname()
     local s, e = socket.tcp()
     assert(s, e)
@@ -459,7 +433,7 @@ function rebind_test()
     r, e = s:bind("localhost", p)
     assert(not r, "managed to rebind!")
     assert(e)
-    pass("ok")
+    print("ok: ", e)
 end
 
 ------------------------------------------------------------------------
@@ -481,14 +455,14 @@ function getstats_test()
         assert(s == t, "sent count failed" .. tostring(s) 
             .. "/" .. tostring(t))
     end
-    pass("ok")
+    print("ok")
 end
 
 
 ------------------------------------------------------------------------
 function test_nonblocking(size) 
     reconnect()
-    printf("testing "  .. 2*size .. " bytes: ")
+print("Testing "  .. 2*size .. " bytes")
 remote(string.format([[
     data:send(string.rep("a", %d))
     socket.sleep(0.5)
@@ -520,7 +494,7 @@ remote(string.format([[
     data:settimeout(-1)
     local back = data:receive(2*size)
     assert(back == str, "'" .. back .. "' vs '" .. str .. "'")
-    pass("ok")
+    print("ok")
 end
 
 ------------------------------------------------------------------------
@@ -528,7 +502,7 @@ function test_readafterclose()
     local back, partial, err
     local str = 'little string'
     reconnect()
-    printf("trying repeated '*a' pattern")
+    pass("trying repeated '*a' pattern")
     remote (string.format ([[
         data:send('%s')
         data:close()
@@ -538,9 +512,9 @@ function test_readafterclose()
     assert(back == str, "unexpected data read")
     back, err, partial = data:receive("*a")
     assert(back == nil and err == "closed", "should have returned 'closed'")
-    pass("ok")
+    print("ok")
     reconnect()
-    printf("trying active close before '*a'")
+    pass("trying active close before '*a'")
     remote (string.format ([[
         data:close()
         data = nil
@@ -548,9 +522,9 @@ function test_readafterclose()
     data:close() 
     back, err, partial = data:receive("*a")
     assert(back == nil and err == "closed", "should have returned 'closed'")
-    pass("ok")
+    print("ok")
     reconnect()
-    printf("trying active close before '*l'")
+    pass("trying active close before '*l'")
     remote (string.format ([[
         data:close()
         data = nil
@@ -558,9 +532,9 @@ function test_readafterclose()
     data:close() 
     back, err, partial = data:receive()
     assert(back == nil and err == "closed", "should have returned 'closed'")
-    pass("ok")
+    print("ok")
     reconnect()
-    printf("trying active close before raw 1")
+    pass("trying active close before raw 1")
     remote (string.format ([[
         data:close()
         data = nil
@@ -568,9 +542,9 @@ function test_readafterclose()
     data:close() 
     back, err, partial = data:receive(1)
     assert(back == nil and err == "closed", "should have returned 'closed'")
-    pass("ok")
+    print("ok")
     reconnect()
-    printf("trying active close before raw 0")
+    pass("trying active close before raw 0")
     remote (string.format ([[
         data:close()
         data = nil
@@ -578,55 +552,17 @@ function test_readafterclose()
     data:close() 
     back, err, partial = data:receive(0)
     assert(back == nil and err == "closed", "should have returned 'closed'")
-    pass("ok")
+    print("ok")
 end
 
-------------------------------------------------------------------------
-function test_writeafterclose()
-    local str = 'little string'
-    reconnect()
-    remote (string.format ([[
-        data:close()
-        data = nil
-    ]]))
-    local sent, err, errsent
-    while not err do 
-        sent, err, errsent, time = data:send(str)
-    end
-    assert(err == "closed", "should have returned 'closed'")
-    pass("ok")
-end
-
-------------------------------------------------------------------------
-
-function test_partialrecv()
-    local str = 'little string'
-    reconnect()
-remote([[
-    data:send("7890")
-]])
-    data:settimeout(1)
-    back, err = data:receive(10, "123456")
-    assert(back == "1234567890", "failed on exact mixed length")
-    back, err = data:receive(8, "87654321")
-    assert(back == "87654321", "failed on exact length")
-    back, err = data:receive(4, "87654321")
-    assert(back == "87654321", "failed on smaller length")
-    pass("ok")
-end
-
-------------------------------------------------------------------------
 test("method registration")
-
-local tcp_methods = {
+test_methods(socket.tcp(), {
     "accept",
     "bind",
     "close",
     "connect",
     "dirty",
-    "getfamily",
     "getfd",
-    "getoption",
     "getpeername",
     "getsockname",
     "getstats",
@@ -640,16 +576,13 @@ local tcp_methods = {
     "setsockname",
     "settimeout",
     "shutdown",
-}
-test_methods(socket.tcp(), tcp_methods)
-test_methods(socket.tcp6(), tcp_methods)
+})
 
-local udp_methods = {
+test_methods(socket.udp(), {
     "close", 
+    "getpeername",
     "dirty",
-    "getfamily",
     "getfd",
-    "getoption",
     "getpeername",
     "getsockname",
     "receive", 
@@ -661,24 +594,13 @@ local udp_methods = {
     "setpeername",
     "setsockname",
     "settimeout"
-}
+})
 
-
-------------------------------------------------------------------------
-test_methods(socket.udp(), udp_methods)
-test_methods(socket.udp6(), udp_methods)
-
-test("partial receive")
-test_partialrecv()
+test("testing read after close")
+test_readafterclose()
 
 test("select function")
 test_selectbugs()
-
-test("read after close")
-test_readafterclose()
-
-test("write after close")
-test_writeafterclose()
 
 test("connect function")
 connect_timeout()
@@ -787,9 +709,5 @@ test_blockingtimeoutreceive(800091, 1, 3)
 test_blockingtimeoutreceive(800091, 2, 3)
 test_blockingtimeoutreceive(800091, 3, 2)
 test_blockingtimeoutreceive(800091, 3, 1)
-
-test("shutting server down")
-reconnect()
-remote("os.exit()")
 
 test(string.format("done in %.2fs", socket.gettime() - start))

@@ -1,6 +1,7 @@
 -----------------------------------------------------------------------------
 -- LuaSocket helper module
 -- Author: Diego Nehab
+-- RCS ID: $Id: socket.lua,v 1.22 2005/11/22 08:33:29 diego Exp $
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -16,62 +17,26 @@ module("socket")
 -- Exported auxiliar functions
 -----------------------------------------------------------------------------
 function connect(address, port, laddress, lport)
-    if address == "*" then address = "0.0.0.0" end
-    local addrinfo, err = socket.dns.getaddrinfo(address);
-    if not addrinfo then return nil, err end
-    local sock, res
-    err = "no info on address"
-    for i, alt in base.ipairs(addrinfo) do 
-        if alt.family == "inet" then
-            sock, err = socket.tcp()
-        else
-            sock, err = socket.tcp6()
-        end
-        if not sock then return nil, err end
-        if laddress then
-            res, err = sock:bind(laddress, lport)
-            if not res then 
-                sock:close()
-                return nil, err 
-            end
-        end
-        res, err = sock:connect(alt.addr, port)
-        if not res then 
-            sock:close()
-        else
-            return sock 
-        end
+    local sock, err = socket.tcp()
+    if not sock then return nil, err end
+    if laddress then
+        local res, err = sock:bind(laddress, lport, -1)
+        if not res then return nil, err end
     end
-    return nil, err
+    local res, err = sock:connect(address, port)
+    if not res then return nil, err end
+    return sock
 end
 
 function bind(host, port, backlog)
-    if host == "*" then host = "0.0.0.0" end
-    local addrinfo, err = socket.dns.getaddrinfo(host);
-    if not addrinfo then return nil, err end
-    local sock, res
-    err = "no info on address"
-    for i, alt in base.ipairs(addrinfo) do
-        if alt.family == "inet" then
-            sock, err = socket.tcp()
-        else
-            sock, err = socket.tcp6()
-        end
-        if not sock then return nil, err end
-        sock:setoption("reuseaddr", true)
-        res, err = sock:bind(alt.addr, port)
-        if not res then 
-            sock:close()
-        else 
-            res, err = sock:listen(backlog)
-            if not res then 
-                sock:close()
-            else
-                return sock
-            end
-        end 
-    end
-    return nil, err
+    local sock, err = socket.tcp()
+    if not sock then return nil, err end
+    sock:setoption("reuseaddr", true)
+    local res, err = sock:bind(host, port)
+    if not res then return nil, err end
+    res, err = sock:listen(backlog)
+    if not res then return nil, err end
+    return sock
 end
 
 try = newtry()

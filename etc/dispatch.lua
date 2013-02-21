@@ -2,6 +2,7 @@
 -- A hacked dispatcher module
 -- LuaSocket sample files
 -- Author: Diego Nehab
+-- RCS ID: $$
 -----------------------------------------------------------------------------
 local base = _G
 local table = require("table")
@@ -53,7 +54,7 @@ function socket.protect(f)
       local results = {coroutine.resume(co, base.unpack(arg))}
       local status = table.remove(results, 1)
       if not status then
-        if base.type(results[1]) == 'table' then
+        if type(results[1]) == 'table' then
           return nil, results[1][1]
         else base.error(results[1]) end
       end

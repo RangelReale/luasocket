@@ -7,14 +7,9 @@ while 1 do
     print("server: waiting for client connection...");
     control = assert(server:accept());
     while 1 do 
-        command, emsg = control:receive();
-        if emsg == "closed" then
-            control:close()
-            break
-        end
-        assert(command, emsg)
+        command = assert(control:receive());
         assert(control:send(ack));
         print(command);
-		((loadstring or load)(command))();
+        (loadstring(command))();
     end
 end

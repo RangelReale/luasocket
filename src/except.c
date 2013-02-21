@@ -1,6 +1,8 @@
 /*=========================================================================*\
 * Simple exception support
 * LuaSocket toolkit
+*
+* RCS ID: $Id: except.c,v 1.8 2005/09/29 06:11:41 diego Exp $
 \*=========================================================================*/
 #include <stdio.h>
 
@@ -19,7 +21,7 @@ static int finalize(lua_State *L);
 static int do_nothing(lua_State *L);
 
 /* except functions */
-static luaL_Reg func[] = {
+static luaL_reg func[] = {
     {"newtry",    global_newtry},
     {"protect",   global_protect},
     {NULL,        NULL}

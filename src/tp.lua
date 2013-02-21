@@ -2,6 +2,7 @@
 -- Unified SMTP/FTP subsystem
 -- LuaSocket toolkit.
 -- Author: Diego Nehab
+-- RCS ID: $Id: tp.lua,v 1.22 2006/03/14 09:04:15 diego Exp $
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -63,7 +64,6 @@ function metat.__index:check(ok)
 end
 
 function metat.__index:command(cmd, arg)
-    cmd = string.upper(cmd)
     if arg then
         return self.c:send(cmd .. " " .. arg.. "\r\n")
     else
@@ -105,7 +105,7 @@ end
 -- closes the underlying c
 function metat.__index:close()
     self.c:close()
-    return 1
+	return 1
 end
 
 -- connect with server and return c object

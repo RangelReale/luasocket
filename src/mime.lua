@@ -2,6 +2,7 @@
 -- MIME support for the Lua language.
 -- Author: Diego Nehab
 -- Conforming to RFCs 2045-2049
+-- RCS ID: $Id: mime.lua,v 1.29 2007/06/11 23:44:54 diego Exp $
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -10,6 +11,7 @@
 local base = _G
 local ltn12 = require("ltn12")
 local mime = require("mime.core")
+local io = require("io")
 local string = require("string")
 module("mime")
 
