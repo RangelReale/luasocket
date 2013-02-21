@@ -39,7 +39,6 @@ install_lua_module ( ltn12 src/ltn12.lua )
 install_lua_module ( mime src/mime.lua )
 install_lua_module ( socket src/socket.lua )
 install_lua_module ( socket.ftp src/ftp.lua )
-install_lua_module ( socket.headers src/headers.lua )
 install_lua_module ( socket.http src/http.lua )
 install_lua_module ( socket.smtp src/smtp.lua )
 install_lua_module ( socket.tp src/tp.lua )
@@ -50,30 +49,3 @@ install_test ( test/ )
 install_example ( samples/ )
 install_doc ( doc/ )
 install_data ( README NEW LICENSE )
-
-# very basic test
-file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/t/t.lua " require 'socket' " )
-add_lua_test ( ${CMAKE_CURRENT_BINARY_DIR}/t/t.lua )
-
-# test with client-server.
-# This is more complicated because the test suite client and server must be
-# run in different threads (or different processes).
-find_package ( Threads )
-if ( Threads_FOUND )
-  add_lua_module ( testing_thread test/testing_thread.c LINK ${CMAKE_THREAD_LIBS_INIT} )
-  file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/t/clientserver.lua "
-    local socket = require 'socket'
-    function sleep(sec) socket.select(nil, nil, sec) end
-    print('RUN_THREAD=', RUN_THREAD)
-    if RUN_THREAD then
-      dofile '${CMAKE_CURRENT_SOURCE_DIR}/test/testsrvr.lua'
-    else
-      require 'testing_thread' '${CMAKE_CURRENT_BINARY_DIR}/clientserver.lua'
-      sleep(2) -- allow some time for server to start
-      dofile '${CMAKE_CURRENT_SOURCE_DIR}/test/testclnt.lua'
-    end
-  " )
-  add_lua_test ( ${CMAKE_CURRENT_BINARY_DIR}/t/clientserver.lua )
-else ()
-  message ( WARNING "skipping tests (no threading)" )
-endif ()
