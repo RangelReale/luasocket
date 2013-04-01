@@ -29,9 +29,10 @@ set ( SRC_SOCKET src/luasocket.c src/timeout.c src/buffer.c src/io.c src/auxilia
 
 if ( WIN32 AND NOT CYGWIN )
   set ( LIB_SOCKET ws2_32 )
-endif ( )
+endif ()
 
-if ( UNIX AND NOT APPLE )
+# Solaris needs specific links
+if ( CMAKE_SYSTEM_NAME STREQUAL "SunOS" )
 	set ( LIB_SOCKET socket resolv rt )
 endif ( )
 
