@@ -31,6 +31,10 @@ if ( WIN32 AND NOT CYGWIN )
   set ( LIB_SOCKET ws2_32 )
 endif ( )
 
+if ( UNIX AND NOT APPLE )
+	set ( LIB_SOCKET socket resolv rt )
+endif ( )
+
 # Binary
 install_lua_module ( socket.core ${SRC_SOCKET} LINK ${LIB_SOCKET} )
 install_lua_module ( mime.core src/mime.c )
