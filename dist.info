@@ -1,7 +1,7 @@
 --- This file is part of LuaDist project
 
 name = "luasocket"
-version = "2.0.2"
+version = "2.1-dev"
 
 desc = "Network support for the Lua language"
 author = "Diego Nehab"
@@ -10,5 +10,5 @@ url = "http://luaforge.net/projects/luasocket/"
 maintainer = "Peter Drahoš"
 
 depends = {
-	"lua ~> 5.1"
+	"lua >= 5.1, < 5.3"
 }
