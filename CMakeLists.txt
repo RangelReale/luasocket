@@ -15,7 +15,7 @@ add_definitions ( -DLUASOCKET_DEBUG )
 
 # Shared library exporting.
 if ( WIN32 )
-  add_definitions ( "-DMIME_API=__declspec(dllexport)" "-DLUASOCKET_API=__declspec(dllexport)" )
+  add_definitions ( "-DMIME_API=__declspec(dllexport)" "-DLUASOCKET_API=__declspec(dllexport)" "-D_WIN32_WINNT=0x0501" "-DIPV6_V6ONLY=27" "-DINET_PTON" )
 endif ( )
 
 if ( WIN32 AND NOT CYGWIN )
