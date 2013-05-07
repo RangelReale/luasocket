@@ -19,7 +19,7 @@ pump = {}
 
 -- 2048 seems to be better in windows...
 BLOCKSIZE = 2048
-_VERSION = "LTN12 1.0.1"
+_VERSION = "LTN12 1.0.2"
 
 -----------------------------------------------------------------------------
 -- Filter stuff
@@ -37,7 +37,8 @@ end
 -- chains a bunch of filters together
 -- (thanks to Wim Couwenberg)
 function filter.chain(...)
-    local n = table.getn(arg)
+    local arg = {...}
+    local n = #arg
     local top, index = 1, 1
     local retry = ""
     return function(chunk)
@@ -185,6 +186,7 @@ end
 -- other, as if they were concatenated
 -- (thanks to Wim Couwenberg)
 function source.cat(...)
+    local arg = {...}
     local src = table.remove(arg, 1)
     return function()
         while src do

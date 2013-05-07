@@ -1,22 +1,32 @@
-PLAT?= macosx
+# luasocket makefile
+#
+# see src/makefile for description of how to customize the build
+#
+# Targets:
+#   install       install system independent support
+#   install-unix  also install unix-only support
+#   install-both  install both lua5.1 and lua5.2 socket support
+#   print	  print the build settings
+
+PLAT?= linux
 PLATS= macosx linux win32
 
-#------
-# Hopefully no need to change anything below this line
-#
 all: $(PLAT)
 
 $(PLATS) none install install-unix local clean:
-	@cd src; $(MAKE) $@
+	$(MAKE) -C src $@
+
+print:
+	$(MAKE) -C src $@
 
 test:
 	lua test/hello.lua
 
 install-both:
-	touch src/*.c
+	$(MAKE) clean 
 	@cd src; $(MAKE) $(PLAT) LUAV=5.1
 	@cd src; $(MAKE) install-unix LUAV=5.1
-	touch src/*.c
+	$(MAKE) clean 
 	@cd src; $(MAKE) $(PLAT) LUAV=5.2
 	@cd src; $(MAKE) install-unix LUAV=5.2
 

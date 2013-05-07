@@ -263,6 +263,8 @@ static int mime_global_b64(lua_State *L)
         lua_pushnil(L);
         return 2;
     }
+    /* make sure we don't confuse buffer stuff with arguments */
+    lua_settop(L, 2);
     /* process first part of the input */
     luaL_buffinit(L, &buffer);
     while (input < last) 
@@ -307,6 +309,8 @@ static int mime_global_unb64(lua_State *L)
         lua_pushnil(L);
         return 2;
     }
+    /* make sure we don't confuse buffer stuff with arguments */
+    lua_settop(L, 2);
     /* process first part of the input */
     luaL_buffinit(L, &buffer);
     while (input < last) 
@@ -458,6 +462,8 @@ static int mime_global_qp(lua_State *L)
         lua_pushnil(L);
         return 2;
     }
+    /* make sure we don't confuse buffer stuff with arguments */
+    lua_settop(L, 3);
     /* process first part of input */
     luaL_buffinit(L, &buffer);
     while (input < last)
@@ -498,7 +504,7 @@ static size_t qpdecode(UC c, UC *input, size_t size, luaL_Buffer *buffer) {
             c = qpunbase[input[1]]; d = qpunbase[input[2]];
             /* if it is an invalid, do not decode */
             if (c > 15 || d > 15) luaL_addlstring(buffer, (char *)input, 3);
-            else luaL_addchar(buffer, (c << 4) + d);
+            else luaL_addchar(buffer, (char) ((c << 4) + d));
             return 0;
         case '\r':
             if (size < 2) return size; 
@@ -531,6 +537,8 @@ static int mime_global_unqp(lua_State *L)
         lua_pushnil(L);
         return 2;
     }
+    /* make sure we don't confuse buffer stuff with arguments */
+    lua_settop(L, 2);
     /* process first part of input */
     luaL_buffinit(L, &buffer);
     while (input < last)
@@ -634,7 +642,7 @@ static int eolprocess(int c, int last, const char *marker,
             return c;
         }
     } else {
-        luaL_addchar(buffer, c);
+        luaL_addchar(buffer, (char) c);
         return 0;
     }
 }
@@ -674,7 +682,7 @@ static int mime_global_eol(lua_State *L)
 \*-------------------------------------------------------------------------*/
 static size_t dot(int c, size_t state, luaL_Buffer *buffer)
 {
-    luaL_addchar(buffer, c);
+    luaL_addchar(buffer, (char) c);
     switch (c) {
         case '\r': 
             return 1;
@@ -709,7 +717,7 @@ static int mime_global_dot(lua_State *L)
     while (input < last) 
         state = dot(*input++, state, &buffer);
     luaL_pushresult(&buffer);
-    lua_pushnumber(L, state);
+    lua_pushnumber(L, (lua_Number) state);
     return 2;
 }
 

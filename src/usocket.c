@@ -181,11 +181,7 @@ int socket_connect(p_socket ps, SA *addr, socklen_t len, p_timeout tm) {
 * Accept with timeout
 \*-------------------------------------------------------------------------*/
 int socket_accept(p_socket ps, p_socket pa, SA *addr, socklen_t *len, p_timeout tm) {
-    SA daddr;
-    socklen_t dlen = sizeof(daddr);
     if (*ps == SOCKET_INVALID) return IO_CLOSED; 
-    if (!addr) addr = &daddr;
-    if (!len) len = &dlen;
     for ( ;; ) {
         int err;
         if ((*pa = accept(*ps, addr, len)) != SOCKET_INVALID) return IO_DONE;
@@ -439,15 +435,15 @@ const char *socket_gaistrerror(int err) {
         case EAI_FAMILY: return "ai_family not supported";
         case EAI_MEMORY: return "memory allocation failure";
         case EAI_NONAME: 
-            return "hostname or servname not provided, or not known";
+            return "host or service not provided, or not known";
         case EAI_OVERFLOW: return "argument buffer overflow";
 #ifdef EAI_PROTOCOL
         case EAI_PROTOCOL: return "resolved protocol is unknown";
 #endif
-        case EAI_SERVICE: return "servname not supported for socktype";
+        case EAI_SERVICE: return "service not supported for socket type";
         case EAI_SOCKTYPE: return "ai_socktype not supported";
         case EAI_SYSTEM: return strerror(errno); 
-        default: return "unknown error";
+        default: return gai_strerror(err);
     }
 }
 

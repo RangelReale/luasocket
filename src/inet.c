@@ -16,6 +16,7 @@
 static int inet_global_toip(lua_State *L);
 static int inet_global_getaddrinfo(lua_State *L);
 static int inet_global_tohostname(lua_State *L);
+static int inet_global_getnameinfo(lua_State *L);
 static void inet_pushresolved(lua_State *L, struct hostent *hp);
 static int inet_global_gethostname(lua_State *L);
 
@@ -24,6 +25,7 @@ static luaL_Reg func[] = {
     { "toip", inet_global_toip},
     { "getaddrinfo", inet_global_getaddrinfo},
     { "tohostname", inet_global_tohostname},
+    { "getnameinfo", inet_global_getnameinfo},
     { "gethostname", inet_global_gethostname},
     { NULL, NULL}
 };
@@ -76,6 +78,52 @@ static int inet_global_tohostname(lua_State *L) {
     return 2;
 }
 
+static int inet_global_getnameinfo(lua_State *L) {
+    int i, ret;
+    char host[1024];
+    char serv[32];
+    struct addrinfo hints;
+    struct addrinfo *resolved, *iter;
+    const char *node = luaL_optstring(L, 1, NULL);
+    const char *service = luaL_optstring(L, 2, NULL);
+
+    if (!(node || service))
+        luaL_error(L, "You have to specify a hostname, a service, or both");
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = PF_UNSPEC;
+
+    /* getaddrinfo must get a node and a service argument */
+    ret = getaddrinfo(node ? node : "127.0.0.1", service ? service : "7",
+        &hints, &resolved);
+    if (ret != 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, socket_gaistrerror(ret));
+        return 2;
+    }
+
+    lua_newtable(L);
+    for (i = 1, iter = resolved; iter; i++, iter = iter->ai_next) {
+        getnameinfo(iter->ai_addr, (socklen_t) iter->ai_addrlen, host,
+            node ? (socklen_t) sizeof(host) : 0, serv, service ? (socklen_t) sizeof(serv) : 0, 0);
+
+        if (node) {
+            lua_pushnumber(L, i);
+            lua_pushstring(L, host);
+            lua_settable(L, -3);
+        }
+    }
+    freeaddrinfo(resolved);
+
+    if (service) {
+        lua_pushstring(L, serv);
+        return 2;
+    } else {
+        return 1;
+    }
+}
+
 /*-------------------------------------------------------------------------*\
 * Returns all information provided by the resolver given a host name
 * or ip address
@@ -93,6 +141,22 @@ static int inet_global_toip(lua_State *L)
     lua_pushstring(L, inet_ntoa(*((struct in_addr *) hp->h_addr)));
     inet_pushresolved(L, hp);
     return 2;
+}
+
+int inet_optfamily(lua_State* L, int narg, const char* def)
+{
+    static const char* optname[] = { "unspec", "inet", "inet6", NULL };
+    static int optvalue[] = { PF_UNSPEC, PF_INET, PF_INET6, 0 };
+
+    return optvalue[luaL_checkoption(L, narg, def, optname)];
+}
+
+int inet_optsocktype(lua_State* L, int narg, const char* def)
+{
+    static const char* optname[] = { "stream", "dgram", NULL };
+    static int optvalue[] = { SOCK_STREAM, SOCK_DGRAM, 0 };
+
+    return optvalue[luaL_checkoption(L, narg, def, optname)];
 }
 
 static int inet_global_getaddrinfo(lua_State *L)
@@ -113,8 +177,8 @@ static int inet_global_getaddrinfo(lua_State *L)
     lua_newtable(L);
     for (iterator = resolved; iterator; iterator = iterator->ai_next) {
         char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
-        getnameinfo(iterator->ai_addr, iterator->ai_addrlen, hbuf, sizeof(hbuf),
-                sbuf, 0, NI_NUMERICHOST);
+        getnameinfo(iterator->ai_addr, (socklen_t) iterator->ai_addrlen, hbuf, 
+            (socklen_t) sizeof(hbuf), sbuf, 0, NI_NUMERICHOST);
         lua_pushnumber(L, i);
         lua_newtable(L);
         switch (iterator->ai_family) {
@@ -149,7 +213,7 @@ static int inet_global_gethostname(lua_State *L)
     name[256] = '\0';
     if (gethostname(name, 256) < 0) {
         lua_pushnil(L);
-        lua_pushstring(L, "gethostname failed");
+        lua_pushstring(L, socket_strerror(errno));
         return 2;
     } else {
         lua_pushstring(L, name);
@@ -174,7 +238,7 @@ int inet_meth_getpeername(lua_State *L, p_socket ps, int family)
             char name[INET_ADDRSTRLEN];
             if (getpeername(*ps, (SA *) &peer, &peer_len) < 0) {
                 lua_pushnil(L);
-                lua_pushstring(L, "getpeername failed");
+                lua_pushstring(L, socket_strerror(errno));
                 return 2;
             } else {
                 inet_ntop(family, &peer.sin_addr, name, sizeof(name));
@@ -190,7 +254,7 @@ int inet_meth_getpeername(lua_State *L, p_socket ps, int family)
             char name[INET6_ADDRSTRLEN];
             if (getpeername(*ps, (SA *) &peer, &peer_len) < 0) {
                 lua_pushnil(L);
-                lua_pushstring(L, "getpeername failed");
+                lua_pushstring(L, socket_strerror(errno));
                 return 2;
             } else {
                 inet_ntop(family, &peer.sin6_addr, name, sizeof(name));
@@ -199,11 +263,10 @@ int inet_meth_getpeername(lua_State *L, p_socket ps, int family)
                 lua_pushliteral(L, "inet6");
                 return 3;
             }
-            return 2;
         }
         default:
             lua_pushnil(L);
-            lua_pushstring(L, "unknown family");
+            lua_pushfstring(L, "unknown family %d", family);
             return 2;
     }
 }
@@ -220,7 +283,7 @@ int inet_meth_getsockname(lua_State *L, p_socket ps, int family)
             char name[INET_ADDRSTRLEN];
             if (getsockname(*ps, (SA *) &local, &local_len) < 0) {
                 lua_pushnil(L);
-                lua_pushstring(L, "getsockname failed");
+                lua_pushstring(L, socket_strerror(errno));
                 return 2;
             } else {
                 inet_ntop(family, &local.sin_addr, name, sizeof(name));
@@ -236,7 +299,7 @@ int inet_meth_getsockname(lua_State *L, p_socket ps, int family)
             char name[INET6_ADDRSTRLEN];
             if (getsockname(*ps, (SA *) &local, &local_len) < 0) {
                 lua_pushnil(L);
-                lua_pushstring(L, "getsockname failed");
+                lua_pushstring(L, socket_strerror(errno));
                 return 2;
             } else {
                 inet_ntop(family, &local.sin6_addr, name, sizeof(name));
@@ -248,7 +311,7 @@ int inet_meth_getsockname(lua_State *L, p_socket ps, int family)
         }
         default:
             lua_pushnil(L);
-            lua_pushstring(L, "unknown family");
+            lua_pushfstring(L, "unknown family %d", family);
             return 2;
     }
 }
@@ -304,6 +367,34 @@ const char *inet_trycreate(p_socket ps, int family, int type) {
 }
 
 /*-------------------------------------------------------------------------*\
+* "Disconnects" a DGRAM socket
+\*-------------------------------------------------------------------------*/
+const char *inet_trydisconnect(p_socket ps, int family, p_timeout tm)
+{
+    switch (family) {
+        case PF_INET: {
+            struct sockaddr_in sin;
+            memset((char *) &sin, 0, sizeof(sin));
+            sin.sin_family = AF_UNSPEC;
+            sin.sin_addr.s_addr = INADDR_ANY;
+            return socket_strerror(socket_connect(ps, (SA *) &sin, 
+                sizeof(sin), tm));
+        }
+        case PF_INET6: {
+            struct sockaddr_in6 sin6;
+            struct in6_addr addrany = IN6ADDR_ANY_INIT; 
+            memset((char *) &sin6, 0, sizeof(sin6));
+            sin6.sin6_family = AF_UNSPEC;
+fprintf(stderr, "disconnecting\n");
+            sin6.sin6_addr = addrany;
+            return socket_strerror(socket_connect(ps, (SA *) &sin6, 
+                sizeof(sin6), tm));
+        }
+    }
+    return NULL;
+}
+
+/*-------------------------------------------------------------------------*\
 * Tries to connect to remote address (address, port)
 \*-------------------------------------------------------------------------*/
 const char *inet_tryconnect(p_socket ps, const char *address,
@@ -318,20 +409,32 @@ const char *inet_tryconnect(p_socket ps, const char *address,
         if (resolved) freeaddrinfo(resolved);
         return err;
     }
-    /* iterate over all returned addresses trying to connect */
     for (iterator = resolved; iterator; iterator = iterator->ai_next) {
         timeout_markstart(tm);
         /* try connecting to remote address */
-        err = socket_strerror(socket_connect(ps,
-            (SA *) iterator->ai_addr,
-            iterator->ai_addrlen, tm));
+        err = socket_strerror(socket_connect(ps, (SA *) iterator->ai_addr, 
+            (socklen_t) iterator->ai_addrlen, tm));
         /* if success, break out of loop */
         if (err == NULL) break;
     }
-
     freeaddrinfo(resolved);
     /* here, if err is set, we failed */
     return err;
+}
+
+/*-------------------------------------------------------------------------*\
+* Tries to accept a socket
+\*-------------------------------------------------------------------------*/
+const char *inet_tryaccept(p_socket server, int family, p_socket client, p_timeout tm)
+{
+	socklen_t len;
+	t_sockaddr_storage addr;
+	if (family == PF_INET6) {
+		len = sizeof(struct sockaddr_in6);
+	} else {
+		len = sizeof(struct sockaddr_in);
+	}
+	return socket_strerror(socket_accept(server, client, (SA *) &addr, &len, tm));
 }
 
 /*-------------------------------------------------------------------------*\
@@ -342,29 +445,39 @@ const char *inet_trybind(p_socket ps, const char *address, const char *serv,
 {
     struct addrinfo *iterator = NULL, *resolved = NULL;
     const char *err = NULL;
-    /* translate luasocket special values to C */
-    if (strcmp(address, "*") == 0) address = NULL;
-    if  (!serv) serv = "0";
+    t_socket sock = *ps;
     /* try resolving */
-    err = socket_gaistrerror(getaddrinfo(address, serv,
-            bindhints, &resolved));
+    err = socket_gaistrerror(getaddrinfo(address, serv, bindhints, &resolved));
     if (err) {
         if (resolved) freeaddrinfo(resolved);
         return err;
     }
     /* iterate over resolved addresses until one is good */
     for (iterator = resolved; iterator; iterator = iterator->ai_next) {
+        if(sock == SOCKET_INVALID) {
+            err = socket_strerror(socket_create(&sock, iterator->ai_family,
+                        iterator->ai_socktype, iterator->ai_protocol));
+            if(err)
+                continue;
+        }
         /* try binding to local address */
-        err = socket_strerror(socket_bind(ps,
+        err = socket_strerror(socket_bind(&sock,
             (SA *) iterator->ai_addr,
-            iterator->ai_addrlen));
-        /* if faiiled, we try the next one */
-        if (err != NULL) socket_destroy(ps);
-        /* if success, we abort loop */
-        else break;
+            (socklen_t) iterator->ai_addrlen));
+
+        /* keep trying unless bind succeeded */
+        if (err) {
+            if(sock != *ps)
+                socket_destroy(&sock);
+        } else {
+            /* remember what we connected to, particularly the family */
+            *bindhints = *iterator;
+            break;
+        }
     }
     /* cleanup and return error */
     freeaddrinfo(resolved);
+    *ps = sock;
     return err;
 }
 
