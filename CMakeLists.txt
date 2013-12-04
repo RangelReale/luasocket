@@ -12,6 +12,9 @@ include ( lua )
 # The standard luasocket build has this enabled in release mode.
 # It is required for running the test suite.
 add_definitions ( -DLUASOCKET_DEBUG )
+if ( MINGW )
+	add_definitions ( -DLUASOCKET_INET_PTON )
+endif ( )
 
 # Shared library exporting.
 if ( WIN32 )
