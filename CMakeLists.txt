@@ -9,6 +9,9 @@ cmake_minimum_required ( VERSION 2.8 )
 include ( cmake/dist.cmake )
 include ( lua )
 
+# Configuration
+option ( LUASOCKET_UNIX "Use only unix domain features." OFF )
+
 # The standard luasocket build has this enabled in release mode.
 # It is required for running the test suite.
 add_definitions ( -DLUASOCKET_DEBUG )
@@ -29,6 +32,9 @@ endif ( )
 
 set ( SRC_SOCKET src/luasocket.c src/timeout.c src/buffer.c src/io.c src/auxiliar.c 
   src/options.c src/inet.c src/tcp.c src/udp.c src/except.c src/select.c ${SOCKETC} )
+  
+set ( UNIX_SOCKET src/unix.c src/io.c src/auxiliar.c src/timeout.c src/options.c
+  src/buffer.c ${SOCKETC} )
 
 if ( WIN32 AND NOT CYGWIN )
   set ( LIB_SOCKET ws2_32 )
@@ -52,6 +58,10 @@ install_lua_module ( socket.smtp src/smtp.lua )
 install_lua_module ( socket.tp src/tp.lua )
 install_lua_module ( socket.url src/url.lua )
 install_lua_module ( socket.headers src/headers.lua )
+
+if ( LUASOCKET_UNIX )
+  install_lua_module ( socket.unix ${UNIX_SOCKET} LINK ${LIB_SOCKET} )
+endif ()
 
 install_foo ( etc/ )
 install_test ( test/ )
