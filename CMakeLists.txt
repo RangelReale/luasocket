@@ -16,7 +16,7 @@ option ( LUASOCKET_UNIX "Use only unix domain features." OFF )
 # It is required for running the test suite.
 add_definitions ( -DLUASOCKET_DEBUG )
 if ( MINGW )
-	add_definitions ( -DLUASOCKET_INET_PTON )
+	add_definitions ( -DLUASOCKET_INET_PTON -D_WIN32_WINNT=0x501 )
 endif ( )
 
 # Shared library exporting.
