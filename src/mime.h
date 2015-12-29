@@ -24,6 +24,15 @@
 #define MIME_API extern
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 MIME_API int luaopen_mime_core(lua_State *L);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* MIME_H */

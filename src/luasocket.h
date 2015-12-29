@@ -24,6 +24,14 @@
 /*-------------------------------------------------------------------------*\
 * Initializes the library.
 \*-------------------------------------------------------------------------*/
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 LUASOCKET_API int luaopen_socket_core(lua_State *L);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LUASOCKET_H */
