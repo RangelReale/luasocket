@@ -4,13 +4,14 @@
 # For details see the COPYRIGHT file distributed with LuaDist.
 # Please note that the package source code is licensed under its own license.
 
-project ( luasocket C )
+project ( luasocket C CXX )
 cmake_minimum_required ( VERSION 2.8 )
 include ( cmake/dist.cmake )
 include ( lua )
 
 # Configuration
 option ( LUASOCKET_UNIX "Use only unix domain features." OFF )
+option ( LUA_CXX "Compile as CXX instead of C." OFF )
 
 # The standard luasocket build has this enabled in release mode.
 # It is required for running the test suite.
@@ -48,6 +49,10 @@ endif ( )
 # Binary
 install_lua_module ( socket.core ${SRC_SOCKET} LINK ${LIB_SOCKET} )
 install_lua_module ( mime.core src/mime.c )
+if (LUA_CXX)
+	SET_SOURCE_FILES_PROPERTIES( ${SRC_SOCKET} src/mime.c PROPERTIES LANGUAGE CXX )
+endif()
+
 # Lua 
 install_lua_module ( ltn12 src/ltn12.lua )
 install_lua_module ( mime src/mime.lua )
@@ -61,6 +66,9 @@ install_lua_module ( socket.headers src/headers.lua )
 
 if ( LUASOCKET_UNIX )
   install_lua_module ( socket.unix ${UNIX_SOCKET} LINK ${LIB_SOCKET} )
+	if (LUA_CXX)
+		SET_SOURCE_FILES_PROPERTIES( ${UNIX_SOCKET} PROPERTIES LANGUAGE CXX )
+	endif()
 endif ()
 
 install_foo ( etc/ )

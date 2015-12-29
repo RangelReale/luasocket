@@ -369,7 +369,7 @@ static int tcp_create(lua_State *L, int family) {
         if (family == PF_INET6) {
             int yes = 1;
             setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
-                (void *)&yes, sizeof(yes));
+                (char *)&yes, sizeof(yes));
         }
         tcp->sock = sock;
         io_init(&tcp->io, (p_send) socket_send, (p_recv) socket_recv,

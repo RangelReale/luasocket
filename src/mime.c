@@ -38,7 +38,7 @@ static size_t b64encode(UC c, UC *input, size_t size, luaL_Buffer *buffer);
 static size_t b64pad(const UC *input, size_t size, luaL_Buffer *buffer);
 static size_t b64decode(UC c, UC *input, size_t size, luaL_Buffer *buffer);
 
-static void qpsetup(UC *class, UC *unbase);
+static void qpsetup(UC *aclass, UC *unbase);
 static void qpquote(UC c, luaL_Buffer *buffer);
 static size_t qpdecode(UC c, UC *input, size_t size, luaL_Buffer *buffer);
 static size_t qpencode(UC c, UC *input, size_t size, 

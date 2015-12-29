@@ -419,7 +419,7 @@ static int udp_create(lua_State *L, int family) {
         if (family == PF_INET6) {
             int yes = 1;
             setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
-                (void *)&yes, sizeof(yes));
+                (char *)&yes, sizeof(yes));
         }
         udp->sock = sock;
         timeout_init(&udp->tm, -1, -1);
